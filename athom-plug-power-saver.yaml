@@ -1,0 +1,66 @@
+substitutions:
+  auto_off_threshold: "5"
+  auto_off_duration: "10"
+
+packages:
+  China Athom Technology.Smart Plug V3: "github://athom-tech/esp32-configs/athom-smart-plug.yaml"
+ 
+script:
+  - id: auto_off_script
+    mode: single
+    then:
+      - delay: !lambda 'return (uint32_t)(id(auto_off_duration_number).state * 60000);'
+      - switch.turn_off: relay
+
+number:
+  - platform: template
+    name: "Auto Off Power Threshold"
+    id: auto_off_threshold_number
+    icon: mdi:flash-alert
+    unit_of_measurement: "W"
+    entity_category: config
+    min_value: 1
+    max_value: 3600
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: ${auto_off_threshold}
+
+  - platform: template
+    name: "Auto Off Duration"
+    id: auto_off_duration_number
+    icon: mdi:timer-outline
+    unit_of_measurement: "min"
+    entity_category: config
+    min_value: 1
+    max_value: 1440
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: ${auto_off_duration}
+
+switch:
+  - platform: template
+    name: "Auto Power Off"
+    id: auto_power_off
+    icon: mdi:timer-off
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_off:
+      then:
+        - script.stop: auto_off_script
+
+interval:
+  - interval: 10s
+    then:
+      - if:
+          condition:
+            and:
+              - switch.is_on: auto_power_off
+              - switch.is_on: relay
+              - lambda: 'return id(power_sensor).state < id(auto_off_threshold_number).state;'
+          then:
+            - script.execute: auto_off_script
+          else:
+            - script.stop: auto_off_script
