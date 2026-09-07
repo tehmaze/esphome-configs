@@ -61,6 +61,11 @@ interval:
               - switch.is_on: relay
               - lambda: 'return id(power_sensor).state < id(auto_off_threshold_number).state;'
           then:
-            - script.execute: auto_off_script
+            - if:
+                condition:
+                  not:
+                    script.is_running: auto_off_script
+                then:
+                  - script.execute: auto_off_script
           else:
             - script.stop: auto_off_script
